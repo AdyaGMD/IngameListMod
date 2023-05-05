@@ -38,6 +38,8 @@ void createButton(CCLayer* self, CCLabelBMFont* thelabel, CCDictionary* pos) {
 void onHttpRequestCompleted(CCLayer* self, gd::GJGameLevel* level, CCLabelBMFont* thelabel) {
     static nlohmann::json childJson;
 
+    self->retain();
+
     std::string resultat;
     CURL* curl;
     CURLcode res;
@@ -66,7 +68,7 @@ void onHttpRequestCompleted(CCLayer* self, gd::GJGameLevel* level, CCLabelBMFont
         res = curl_easy_perform(curl);
         curl_easy_cleanup(curl);
         if (CURLE_OK != res) {
-            std::string errormsg = "Err";
+            std::string errormsg = "Error";
             thelabel->setString(errormsg.c_str());
             std::cerr << "CURL error: " << res << '\n';
             curl_global_cleanup();
@@ -77,6 +79,8 @@ void onHttpRequestCompleted(CCLayer* self, gd::GJGameLevel* level, CCLabelBMFont
     std::cout << resultat << "\n\n";
 
     childJson = nlohmann::json::parse(resultat);
+
+    self->autorelease();
 
     if (childJson[0].contains("position")) {
         int position = childJson[0]["position"];
@@ -108,7 +112,7 @@ bool __fastcall LevelInfoLayer::hook(CCLayer* self, void*, gd::GJGameLevel* leve
     if (level->demonDifficulty != 6) return result;
 
     CCLabelBMFont* thelabel;
-    thelabel = CCLabelBMFont::create("...", "goldFont.fnt");
+    thelabel = CCLabelBMFont::create(" ... ", "goldFont.fnt");
 
     int offset = (level->coins == 0) ? 17 : 4;
 
