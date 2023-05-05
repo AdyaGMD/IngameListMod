@@ -10,6 +10,7 @@
 #include <shellapi.h>
 
 std::unordered_map<std::string, int> cachedPositions;
+bool requestfinished = false;
 
 static size_t my_write(void* buffer, size_t size, size_t nmemb, void* param)
 {
@@ -20,12 +21,16 @@ static size_t my_write(void* buffer, size_t size, size_t nmemb, void* param)
 }
 
 void createButton(CCLayer* self, CCLabelBMFont* thelabel, CCDictionary* pos) {
-    CCPoint position = thelabel->getPosition();
+    CCPoint position = { thelabel->getPositionX() + 8.f, thelabel->getPositionY() };
     auto button = gd::CCMenuItemSpriteExtra::create(thelabel, self, menu_selector(LevelInfoLayer::openLink));
     button->setUserObject(pos); // if this fails, try setUserData
     auto menu = CCMenu::create(); // To make the button "clickable"
+    CCSprite* trophy = CCSprite::createWithSpriteFrameName("rankIcon_top10_001.png");
+    trophy->setScale(0.5f);
+    trophy->setPosition({-10.f , 5.f});
     menu->addChild(button);
     menu->setPosition(position);
+    button->addChild(trophy);
     self->addChild(menu);
 }
 
@@ -61,7 +66,7 @@ void onHttpRequestCompleted(CCLayer* self, gd::GJGameLevel* level, CCLabelBMFont
         res = curl_easy_perform(curl);
         curl_easy_cleanup(curl);
         if (CURLE_OK != res) {
-            std::string errormsg = "Error: " + std::string(std::to_string(res));
+            std::string errormsg = "Err";
             thelabel->setString(errormsg.c_str());
             std::cerr << "CURL error: " << res << '\n';
             curl_global_cleanup();
@@ -75,7 +80,7 @@ void onHttpRequestCompleted(CCLayer* self, gd::GJGameLevel* level, CCLabelBMFont
 
     if (childJson[0].contains("position")) {
         int position = childJson[0]["position"];
-        std::string label = "#" + std::string(std::to_string(position));
+        std::string label = std::string(std::to_string(position));
         thelabel->setString(label.c_str());
         CCDictionary* pos = CCDictionary::create();
         pos->setObject(CCInteger::create(position), "get");
@@ -83,7 +88,7 @@ void onHttpRequestCompleted(CCLayer* self, gd::GJGameLevel* level, CCLabelBMFont
         cachedPositions.insert({ level->levelName, position });
     }
     else {
-        thelabel->setString("Not on List");
+        thelabel->setString("N/A");
         cachedPositions.insert({ level->levelName, -1 });
     }
 
@@ -112,19 +117,20 @@ bool __fastcall LevelInfoLayer::hook(CCLayer* self, void*, gd::GJGameLevel* leve
     auto it = cachedPositions.find(level->levelName);
 
     thelabel->setPosition({ size.width / 2 - 100, size.height / 2 + offset });
-    thelabel->setScale(0.4f);
+    thelabel->setScale(0.5f);
 
     if (it != cachedPositions.end()) {
         if (cachedPositions[level->levelName] > -1) {
             int position = cachedPositions[level->levelName];
-            std::string label = "#" + std::string(std::to_string(position));
+            std::string label = std::string(std::to_string(position));
             thelabel->setString(label.c_str());
             CCDictionary* pos = CCDictionary::create();
             pos->setObject(CCInteger::create(position), "get");
             createButton(self, thelabel, pos); // probably a bad idea passing it
         }
         else {
-            thelabel->setString("Not On List");        }
+            thelabel->setString("N/A");        
+        }
     }
     else {
         std::thread worker1(onHttpRequestCompleted, self, level, thelabel);
