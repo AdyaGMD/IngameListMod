@@ -109,7 +109,7 @@ void LevelInfoLayer::openLink(CCObject* ret) {
 bool __fastcall LevelInfoLayer::hook(CCLayer* self, void*, gd::GJGameLevel* level) {
     bool result = init(self, level);
 
-    if (level->demonDifficulty != 6) return result;
+    if (!(level->stars == 10 && level->demonDifficulty == 6)) return result;
 
     CCLabelBMFont* thelabel;
     thelabel = CCLabelBMFont::create(" ... ", "goldFont.fnt");
