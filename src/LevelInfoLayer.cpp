@@ -113,12 +113,6 @@ void onHttpRequestCompleted(CCLayer* self, gd::GJGameLevel* level, CCLabelBMFont
     self->autorelease();
 
     if (childJson[0].contains("position")) {
-        if (!pointercrate && level->userName != childJson[0]["publisher"]["name"]) {
-            thelabel->setString("N/A");
-            infoButton(self, thelabel);
-            cachedPositions.insert({ level->levelID, -1 });
-            return;
-        }
         int position = childJson[0]["position"];
         std::string label = std::string(std::to_string(position));
         thelabel->setString(label.c_str());
@@ -140,7 +134,7 @@ void onHttpRequestCompleted(CCLayer* self, gd::GJGameLevel* level, CCLabelBMFont
 bool __fastcall LevelInfoLayer::hook(CCLayer* self, void*, gd::GJGameLevel* level) {
     bool result = init(self, level);
 
-    if (level->ratingsSum != 50) return result;
+    if (level->ratingsSum < 40) return result;
     if (level->demon != 1 && level->levelLength >= 2) return result;
 
     int offset = (level->coins == 0) ? 17 : 4;

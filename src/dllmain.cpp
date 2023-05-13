@@ -17,7 +17,7 @@ DWORD WINAPI my_thread(void* hModule) {
     }
     //0x175df0
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x175df0), LevelInfoLayer::hook, reinterpret_cast<void**>(&LevelInfoLayer::init));
-    //MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1587b0), LeaderboardsLayer::hook, reinterpret_cast<void**>(&LeaderboardsLayer::init));
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1587b0), LeaderboardsLayer::hook, reinterpret_cast<void**>(&LeaderboardsLayer::init));
     MH_EnableHook(MH_ALL_HOOKS);
 }
 
