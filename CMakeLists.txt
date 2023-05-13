@@ -12,7 +12,7 @@ if(NOT WINDOWS_HEADER)
 endif()
 
 file(GLOB_RECURSE SOURCE_FILES src/*.cpp)
-add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
+add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES} "src/LeaderboardsLayer.h" "src/LeaderboardLayer.cpp" "src/BrownAlertDelegate.cpp" "src/DLStatsViewer.cpp" "src/DLStatsViewer.h")
 
 target_include_directories(${PROJECT_NAME} PRIVATE
   libs/minhook/include
