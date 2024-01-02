@@ -1,16 +1,16 @@
-#define CURL_STATICLIB
-
-#include "pch.h"
-#include "LevelInfoLayer.h"
-#include "curl/curl.h"
-#include <thread>
-#include "stdio.h"
-#include "json.hpp"
-#include <windows.h>
-#include <shellapi.h>
+#include "include.h"
+#include <Geode/modify/LevelInfoLayer.hpp>
+#include <Geode/utils/web.hpp>
+#include "json.h"
 
 std::unordered_map<int, int> cachedPositions;
 bool requestfinished = false;
+
+class DemonClass {
+public:
+    void infobox(CCObject*);
+    void openLink(cocos2d::CCObject* ret);
+};
 
 static size_t my_write(void* buffer, size_t size, size_t nmemb, void* param)
 {
@@ -22,7 +22,7 @@ static size_t my_write(void* buffer, size_t size, size_t nmemb, void* param)
 
 void createButton(CCLayer* self, CCLabelBMFont* thelabel, CCDictionary* pos, bool pointercrate) {
     CCPoint position = { thelabel->getPositionX() + 8.f, thelabel->getPositionY() };
-    auto button = gd::CCMenuItemSpriteExtra::create(thelabel, self, menu_selector(LevelInfoLayer::openLink));
+    auto button = CCMenuItemSpriteExtra::create(thelabel, self, menu_selector(DemonClass::openLink));
     button->setUserObject(pos);
     auto menu = CCMenu::create(); // To make the button "clickable"
     auto texture = "rankIcon_top50_001.png";
@@ -37,7 +37,7 @@ void createButton(CCLayer* self, CCLabelBMFont* thelabel, CCDictionary* pos, boo
     self->addChild(menu);
 }
 
-void LevelInfoLayer::openLink(CCObject* ret) {
+void DemonClass::openLink(CCObject* ret) {
     CCDictionary* dict = static_cast<CCDictionary*>(static_cast<CCNode*>(ret)->getUserObject());
     CCInteger* position = reinterpret_cast<CCInteger*>(dict->objectForKey("get"));
     CCBool* pointercrate = reinterpret_cast<CCBool*>(dict->objectForKey("domain"));
@@ -48,35 +48,27 @@ void LevelInfoLayer::openLink(CCObject* ret) {
 }
 
 void infoButton(CCLayer* layer, CCLabelBMFont* thelabel) {
-    CCPoint position = { thelabel->getPositionX() - 122, thelabel->getPositionY() - 81};
-
+    CCPoint position = { thelabel->getPositionX() - 122, thelabel->getPositionY() - 81 };
     CCSprite* buttonbg = CCSprite::createWithSpriteFrameName("GJ_infoIcon_001.png");
-
-    auto button = gd::CCMenuItemSpriteExtra::create(buttonbg, layer, menu_selector(LevelInfoLayer::infobox));
+    auto button = CCMenuItemSpriteExtra::create(buttonbg, layer, menu_selector(DemonClass::infobox));
     auto menu = CCMenu::create();
-
     menu->setScale(0.5f);
     menu->addChild(button);
     menu->setPosition(position);
     layer->addChild(menu);
 }
 
-void LevelInfoLayer::infobox(CCObject*) {
-    gd::FLAlertLayer::create(nullptr, "N/A Position Help", "OK", nullptr, "The <cr>Demon</c> or <cr>Challenge</c> has either never been <cl>List Worthy</c> or hasn't been placed yet on the <cy>List</c>.")->show();
+void DemonClass::infobox(CCObject*) {
+    FLAlertLayer::create("N/A Position Help", "The <cr>Demon</c> or <cr>Challenge</c> has either never been <cl>List Worthy</c> or hasn't been placed yet on the <cy>List</c>.", "OK")->show();
 }
 
-void onHttpRequestCompleted(CCLayer* self, gd::GJGameLevel* level, CCLabelBMFont* thelabel, bool pointercrate) {
+void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool pointercrate)
+{
     static nlohmann::json childJson;
 
     self->retain();
 
-    std::string resultat;
-    CURL* curl;
-    CURLcode res;
-    curl_global_init(CURL_GLOBAL_DEFAULT);
-    curl = curl_easy_init();
-
-    std::string lvlname = level->levelName;
+    std::string lvlname = level->m_levelName;
     std::string oldStr = " ";
     std::string newStr = "%20";
 
@@ -90,60 +82,54 @@ void onHttpRequestCompleted(CCLayer* self, gd::GJGameLevel* level, CCLabelBMFont
         lvlname.replace(pos, oldStr.length(), newStr);
     }
 
-    if (curl) {
-        std::string url = pointercrate ? "https://pointercrate.com" : "https://challengelist.gd";
-        curl_easy_setopt(curl, CURLOPT_URL, url + "/api/v2/demons/listed/?name=" + std::string(lvlname));
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, my_write);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &resultat);
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-        res = curl_easy_perform(curl);
-        curl_easy_cleanup(curl);
-        if (CURLE_OK != res) {
-            std::string errormsg = "Error";
-            thelabel->setString(errormsg.c_str());
-            std::cerr << "CURL error: " << res << '\n';
-            curl_global_cleanup();
+    std::string url = pointercrate ? "https://pointercrate.com" : "https://challengelist.gd";
+
+    web::AsyncWebRequest()
+        .fetch(url + "/api/v2/demons/listed/?name=" + std::string(lvlname))
+        .text()
+        .then([self, thelabel, pointercrate, level](std::string const& resultat) mutable {
+            std::cout << resultat << "\n\n";
+            childJson = nlohmann::json::parse(resultat);
+
+            self->autorelease();
+
+            if (childJson[0].contains("position")) {
+                int position = childJson[0]["position"];
+                std::string label = std::string(std::to_string(position));
+                thelabel->setString(label.c_str());
+                CCDictionary* pos = CCDictionary::create();
+                pos->setObject(CCInteger::create(position), "get");
+                pos->setObject(CCBool::create(pointercrate), "domain");
+                createButton(self, thelabel, pos, pointercrate);
+                cachedPositions.insert({ level->m_levelID, position });
+            }
+            else {
+                thelabel->setString("N/A");
+                infoButton(self, thelabel);
+                cachedPositions.insert({ level->m_levelID, -1 });
+            }
+        })
+        .expect([](std::string const& error) {
             return;
-        }
-    }
-    curl_global_cleanup();
-    std::cout << resultat << "\n\n";
-    childJson = nlohmann::json::parse(resultat);
-
-    self->autorelease();
-
-    if (childJson[0].contains("position")) {
-        int position = childJson[0]["position"];
-        std::string label = std::string(std::to_string(position));
-        thelabel->setString(label.c_str());
-        CCDictionary* pos = CCDictionary::create();
-        pos->setObject(CCInteger::create(position), "get");
-        pos->setObject(CCBool::create(pointercrate), "domain");
-        createButton(self, thelabel, pos, pointercrate);
-        cachedPositions.insert({ level->levelID, position });
-    }
-    else {
-        thelabel->setString("N/A");
-        infoButton(self, thelabel);
-        cachedPositions.insert({ level->levelID, -1 });
-    }
+        });
 
     return;
 }
 
-bool __fastcall LevelInfoLayer::hook(CCLayer* self, void*, gd::GJGameLevel* level) {
-    bool result = init(self, level);
+class $modify(LevelInfoLayer) {
+    bool init(GJGameLevel* level, bool idk) {
+    if (!LevelInfoLayer::init(level, idk)) return false;
 
-    if (level->ratingsSum < 40) return result;
-    if (level->demon != 1 && level->levelLength >= 2) return result;
+    if (level->m_ratingsSum < 40) return true;
+    if (level->m_demon != 1 && level->m_levelLength >= 2) return true;
 
-    int offset = (level->coins == 0) ? 17 : 4;
+    int offset = (level->m_coins == 0) ? 17 : 4;
 
     auto director = CCDirector::sharedDirector();
     auto size = director->getWinSize();
-    auto it = cachedPositions.find(level->levelID);
+    auto it = cachedPositions.find(level->m_levelID);
 
-    bool pointercrate = (level->stars == 10) ? true : false;
+    bool pointercrate = (level->m_stars == 10) ? true : false;
 
     int yoffset = pointercrate ? 0 : 7.f;
 
@@ -159,27 +145,26 @@ bool __fastcall LevelInfoLayer::hook(CCLayer* self, void*, gd::GJGameLevel* leve
     }
 
     if (it != cachedPositions.end()) {
-        if (cachedPositions[level->levelID] > -1) {
-            int position = cachedPositions[level->levelID];
+        if (cachedPositions[level->m_levelID] > -1) {
+            int position = cachedPositions[level->m_levelID];
             std::string label = std::string(std::to_string(position));
             thelabel->setString(label.c_str());
             CCDictionary* pos = CCDictionary::create();
             pos->setObject(CCBool::create(pointercrate), "domain");
             pos->setObject(CCInteger::create(position), "get");
-            createButton(self, thelabel, pos, pointercrate);
+            createButton(this, thelabel, pos, pointercrate);
         }
         else {
             thelabel->setString("N/A");      
-            infoButton(self, thelabel);
+            infoButton(this, thelabel);
         }
     }
     else {
-        std::thread worker1(onHttpRequestCompleted, self, level, thelabel, pointercrate);
-        worker1.detach();
+        getRequest(this, level, thelabel, pointercrate);
     }
 
-    self->addChild(thelabel);
+    addChild(thelabel);
 
-
-    return result;
-}
+    return true;
+    }
+};
