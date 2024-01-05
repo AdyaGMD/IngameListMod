@@ -20,7 +20,7 @@ static size_t my_write(void* buffer, size_t size, size_t nmemb, void* param)
     return totalsize;
 }
 
-void createButton(CCLayer* self, CCLabelBMFont* thelabel, CCDictionary* pos, bool pointercrate) {
+void createButton(CCLayer* self, CCLabelBMFont* thelabel, CCDictionary* pos, bool pointercrate, bool platformer) {
     CCPoint position = { thelabel->getPositionX() + 8.f, thelabel->getPositionY() };
     auto button = CCMenuItemSpriteExtra::create(thelabel, self, menu_selector(DemonClass::openLink));
     button->setUserObject(pos);
@@ -28,8 +28,9 @@ void createButton(CCLayer* self, CCLabelBMFont* thelabel, CCDictionary* pos, boo
     auto texture = "rankIcon_top50_001.png";
     CCSprite* trophy;
     if (pointercrate) texture = "rankIcon_top10_001.png";
+    if (platformer) texture = "rankIcon_top500_001.png";
     trophy = CCSprite::createWithSpriteFrameName(texture);
-    trophy->setScale(0.5f);
+    (platformer) ? trophy->setScale(0.8f) : trophy->setScale(0.5f);
     trophy->setPosition({-10.f , 5.f});
     menu->addChild(button);
     menu->setPosition(position);
@@ -41,8 +42,10 @@ void DemonClass::openLink(CCObject* ret) {
     CCDictionary* dict = static_cast<CCDictionary*>(static_cast<CCNode*>(ret)->getUserObject());
     CCInteger* position = reinterpret_cast<CCInteger*>(dict->objectForKey("get"));
     CCBool* pointercrate = reinterpret_cast<CCBool*>(dict->objectForKey("domain"));
+    CCBool* platformer = reinterpret_cast<CCBool*>(dict->objectForKey("platformer"));
 
     std::string domain = pointercrate->getValue() ? "https://pointercrate.com/demonlist/" : "https://challengelist.gd/challenges/";
+    if (platformer) domain = "https://www.platformerlist.com/demons/";
     std::string url = domain + std::string(std::to_string(position->getValue()));
     ShellExecute(0, 0, url.c_str(), 0, 0, SW_SHOW);
 }
@@ -62,13 +65,14 @@ void DemonClass::infobox(CCObject*) {
     FLAlertLayer::create("N/A Position Help", "The <cr>Demon</c> or <cr>Challenge</c> has either never been <cl>List Worthy</c> or hasn't been placed yet on the <cy>List</c>.", "OK")->show();
 }
 
-void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool pointercrate)
+void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool pointercrate, bool platformer)
 {
     static nlohmann::json childJson;
 
     self->retain();
 
     std::string lvlname = level->m_levelName;
+    std::string lvlID = std::to_string(level->m_levelID);
     std::string oldStr = " ";
     std::string newStr = "%20";
 
@@ -82,14 +86,18 @@ void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool
         lvlname.replace(pos, oldStr.length(), newStr);
     }
 
-    std::string url = pointercrate ? "https://pointercrate.com" : "https://challengelist.gd";
+    std::string url = pointercrate ? "https://pointercrate.com/api/v2/demons/listed/?name=" + std::string(lvlname) : "https://challengelist.gd/api/v2/demons/listed/?name=" + std::string(lvlname);
+    if (platformer) url = "https://www.platformerlist.com/api/demon/?level_id=" + std::string(lvlID);
 
     web::AsyncWebRequest()
-        .fetch(url + "/api/v2/demons/listed/?name=" + std::string(lvlname))
+        .fetch(url)
         .text()
-        .then([self, thelabel, pointercrate, level](std::string const& resultat) mutable {
+        .then([self, thelabel, pointercrate, level, platformer](std::string const& resultat) mutable {
             std::cout << resultat << "\n\n";
-            childJson = nlohmann::json::parse(resultat);
+
+            std::string result = "[" + resultat + "]";
+
+            childJson = nlohmann::json::parse(result);
 
             self->autorelease();
 
@@ -100,7 +108,8 @@ void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool
                 CCDictionary* pos = CCDictionary::create();
                 pos->setObject(CCInteger::create(position), "get");
                 pos->setObject(CCBool::create(pointercrate), "domain");
-                createButton(self, thelabel, pos, pointercrate);
+                pos->setObject(CCBool::create(platformer), "platformer");
+                createButton(self, thelabel, pos, pointercrate, platformer);
                 cachedPositions.insert({ level->m_levelID, position });
             }
             else {
@@ -120,8 +129,11 @@ class $modify(LevelInfoLayer) {
     bool init(GJGameLevel* level, bool idk) {
     if (!LevelInfoLayer::init(level, idk)) return false;
 
-    if (level->m_ratingsSum < 40) return true;
+    bool platformer = false;
+    if (level->m_demon == 1 && level->m_levelLength == 5) platformer = true;
+    if (level->m_ratingsSum < 40 && !platformer) return true;
     if (level->m_demon != 1 && level->m_levelLength >= 2) return true;
+    if (platformer) log::info("platformer"); 
 
     int offset = (level->m_coins == 0) ? 17 : 4;
 
@@ -139,7 +151,7 @@ class $modify(LevelInfoLayer) {
     thelabel->setPosition({ size.width / 2 - 100, size.height / 2 + offset + yoffset });
     thelabel->setScale(0.5f);
 
-    if (!pointercrate) {
+    if (!pointercrate || platformer) {
         thelabel->setFntFile("bigFont.fnt");
         thelabel->setScale(0.4f);
     }
@@ -152,7 +164,8 @@ class $modify(LevelInfoLayer) {
             CCDictionary* pos = CCDictionary::create();
             pos->setObject(CCBool::create(pointercrate), "domain");
             pos->setObject(CCInteger::create(position), "get");
-            createButton(this, thelabel, pos, pointercrate);
+            pos->setObject(CCBool::create(platformer), "platformer");
+            createButton(this, thelabel, pos, pointercrate, platformer);
         }
         else {
             thelabel->setString("N/A");      
@@ -160,7 +173,7 @@ class $modify(LevelInfoLayer) {
         }
     }
     else {
-        getRequest(this, level, thelabel, pointercrate);
+        getRequest(this, level, thelabel, pointercrate, platformer);
     }
 
     addChild(thelabel);
