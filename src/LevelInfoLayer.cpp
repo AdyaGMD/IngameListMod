@@ -5,11 +5,13 @@
 
 std::unordered_map<int, int> cachedPositions;
 bool requestfinished = false;
+int listtype;
 
 class DemonClass {
 public:
     void infobox(CCObject*);
     void openLink(cocos2d::CCObject* ret);
+
 };
 
 static size_t my_write(void* buffer, size_t size, size_t nmemb, void* param)
@@ -22,6 +24,9 @@ static size_t my_write(void* buffer, size_t size, size_t nmemb, void* param)
 
 void createButton(CCLayer* self, CCLabelBMFont* thelabel, CCDictionary* pos, bool pointercrate, bool platformer) {
     CCPoint position = { thelabel->getPositionX() + 8.f, thelabel->getPositionY() };
+    listtype = 1;
+    if (pointercrate) listtype = 0;
+    if (platformer) listtype = 2;
     auto button = CCMenuItemSpriteExtra::create(thelabel, self, menu_selector(DemonClass::openLink));
     button->setUserObject(pos);
     auto menu = CCMenu::create(); // To make the button "clickable"
@@ -43,11 +48,12 @@ void DemonClass::openLink(CCObject* ret) {
     CCInteger* position = reinterpret_cast<CCInteger*>(dict->objectForKey("get"));
     CCBool* pointercrate = reinterpret_cast<CCBool*>(dict->objectForKey("domain"));
     CCBool* platformer = reinterpret_cast<CCBool*>(dict->objectForKey("platformer"));
-
-    std::string domain = pointercrate->getValue() ? "https://pointercrate.com/demonlist/" : "https://challengelist.gd/challenges/";
-    if (platformer) domain = "https://www.platformerlist.com/demons/";
-    std::string url = domain + std::string(std::to_string(position->getValue()));
-    ShellExecute(0, 0, url.c_str(), 0, 0, SW_SHOW);
+    if (listtype > 0) {
+        std::string domain = "https://challengelist.gd/challenges/";
+        if (listtype == 2) domain = "https://www.platformerlist.com/platformer/rated/";
+        std::string url = domain + std::string(std::to_string(position->getValue()));
+        ShellExecute(0, 0, url.c_str(), 0, 0, SW_SHOW);
+    }
 }
 
 void infoButton(CCLayer* layer, CCLabelBMFont* thelabel) {
@@ -86,7 +92,7 @@ void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool
         lvlname.replace(pos, oldStr.length(), newStr);
     }
 
-    std::string url = pointercrate ? "https://pointercrate.com/api/v2/demons/listed/?name=" + std::string(lvlname) : "https://challengelist.gd/api/v2/demons/listed/?name=" + std::string(lvlname);
+    std::string url = pointercrate ? "https://api.aredl.net/api/aredl/level?level_id=" + std::string(lvlID) : "https://challengelist.gd/api/v2/demons/listed/?name=" + std::string(lvlname);
     if (platformer) url = "https://www.platformerlist.com/api/demon/?level_id=" + std::string(lvlID);
 
     web::AsyncWebRequest()
@@ -94,8 +100,9 @@ void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool
         .text()
         .then([self, thelabel, pointercrate, level, platformer](std::string const& resultat) mutable {
             std::cout << resultat << "\n\n";
+            std::string result;
 
-            std::string result = "[" + resultat + "]";
+            (!platformer && !pointercrate) ? result = resultat : result = "[" + resultat + "]";
 
             childJson = nlohmann::json::parse(result);
 
