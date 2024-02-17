@@ -104,30 +104,32 @@ void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool
         .fetch(url)
         .text()
         .then([self, thelabel, pointercrate, level, platformer](std::string const& resultat) mutable {
-            std::cout << resultat << "\n\n";
+            //std::cout << resultat << "\n\n";
             std::string result;
 
             (!platformer && !pointercrate) ? result = resultat : result = "[" + resultat + "]";
+            
+            if (result[0] == '<') {
+                childJson = nlohmann::json::parse(result);
 
-            childJson = nlohmann::json::parse(result);
+                self->autorelease();
 
-            self->autorelease();
-
-            if (childJson[0].contains("position")) {
-                int position = childJson[0]["position"];
-                std::string label = std::string(std::to_string(position));
-                thelabel->setString(label.c_str());
-                CCDictionary* pos = CCDictionary::create();
-                pos->setObject(CCInteger::create(position), "get");
-                pos->setObject(CCBool::create(pointercrate), "domain");
-                pos->setObject(CCBool::create(platformer), "platformer");
-                createButton(self, thelabel, pos, pointercrate, platformer);
-                cachedPositions.insert({ level->m_levelID, position });
-            }
-            else {
-                thelabel->setString("N/A");
-                infoButton(self, thelabel);
-                cachedPositions.insert({ level->m_levelID, -1 });
+                if (childJson[0].contains("position")) {
+                    int position = childJson[0]["position"];
+                    std::string label = std::string(std::to_string(position));
+                    thelabel->setString(label.c_str());
+                    CCDictionary* pos = CCDictionary::create();
+                    pos->setObject(CCInteger::create(position), "get");
+                    pos->setObject(CCBool::create(pointercrate), "domain");
+                    pos->setObject(CCBool::create(platformer), "platformer");
+                    createButton(self, thelabel, pos, pointercrate, platformer);
+                    cachedPositions.insert({ level->m_levelID, position });
+                }
+                else {
+                    thelabel->setString("N/A");
+                    infoButton(self, thelabel);
+                    cachedPositions.insert({ level->m_levelID, -1 });
+                }
             }
         })
         .expect([](std::string const& error) {
