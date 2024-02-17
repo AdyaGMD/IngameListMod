@@ -104,12 +104,11 @@ void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool
         .fetch(url)
         .text()
         .then([self, thelabel, pointercrate, level, platformer](std::string const& resultat) mutable {
-            //std::cout << resultat << "\n\n";
+            std::cout << resultat << "\n\n";
             std::string result;
 
-            (!platformer && !pointercrate) ? result = resultat : result = "[" + resultat + "]";
-            
-            if (result[0] == '<') {
+            if (resultat.find("<!DOCTYPE html>") == std::string::npos) {
+                (!platformer && !pointercrate) ? result = resultat : result = "[" + resultat + "]";
                 childJson = nlohmann::json::parse(result);
 
                 self->autorelease();
