@@ -55,7 +55,7 @@ void DemonClass::openLink(CCObject* ret) {
     CCBool* platformer = reinterpret_cast<CCBool*>(dict->objectForKey("platformer"));
     if (listtype > 0) {
         std::string domain = "https://challengelist.gd/challenges/";
-        if (listtype == 2) domain = "https://www.platformerlist.com/platformer/rated/";
+        if (listtype == 2) domain = "https://www.demonlist.com/platformer/rated/";
         std::string url = domain + std::string(std::to_string(position->getValue()));
         ShellExecute(0, 0, url.c_str(), 0, 0, SW_SHOW);
     }
@@ -98,7 +98,7 @@ void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool
     }
 
     std::string url = pointercrate ? "https://api.aredl.net/api/aredl/level?level_id=" + std::string(lvlID) : "https://challengelist.gd/api/v2/demons/listed/?name=" + std::string(lvlname);
-    if (platformer) url = "https://www.platformerlist.com/api/demon/?level_id=" + std::string(lvlID);
+    if (platformer) url = "https://www.demonlist.com/api/demon/?level_id=" + std::string(lvlID);
 
     web::AsyncWebRequest()
         .fetch(url)
