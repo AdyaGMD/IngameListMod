@@ -107,7 +107,7 @@ void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool
             std::cout << resultat << "\n\n";
             std::string result;
 
-            if (resultat.find("<!DOCTYPE html>") == std::string::npos) {
+            try {
                 (!platformer && !pointercrate) ? result = resultat : result = "[" + resultat + "]";
                 childJson = nlohmann::json::parse(result);
 
@@ -129,7 +129,7 @@ void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool
                     infoButton(self, thelabel);
                     cachedPositions.insert({ level->m_levelID, -1 });
                 }
-            }
+            } catch (int a) {}
         })
         .expect([](std::string const& error) {
             return;
