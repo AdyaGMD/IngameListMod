@@ -97,7 +97,7 @@ void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool
         lvlname.replace(pos, oldStr.length(), newStr);
     }
 
-    std::string url = pointercrate ? "https://api.aredl.net/api/aredl/level?level_id=" + std::string(lvlID) : "https://challengelist.gd/api/v2/demons/listed/?name=" + std::string(lvlname);
+    std::string url = pointercrate ? "https://api.aredl.net/api/aredl/levels/" + std::string(lvlID) + "?two_player=false&records=false&creators=false&verification=false&packs=false" : "https://challengelist.gd/api/v2/demons/listed/?name=" + std::string(lvlname);
     if (platformer) url = "https://www.demonlist.com/api/level/?level_id=" + std::string(lvlID);
 
     web::AsyncWebRequest()
