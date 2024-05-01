@@ -15,8 +15,9 @@ int listtype;
 
 class DemonClass {
 public:
-    void infobox(CCObject*);
-    void openLink(cocos2d::CCObject* ret);
+    void infobox(CCObject* sender);
+    void internetFail(CCObject* sender);
+    void openLink(CCObject* ret);
 };
 
 static size_t my_write(void* buffer, size_t size, size_t nmemb, void* param)
@@ -61,10 +62,11 @@ void DemonClass::openLink(CCObject* ret) {
     }
 }
 
-void infoButton(CCLayer* layer, CCLabelBMFont* thelabel) {
+void infoButton(CCLayer* layer, CCLabelBMFont* thelabel, bool internetFail = false) {
     CCPoint position = { thelabel->getPositionX() - 122, thelabel->getPositionY() - 81 };
     CCSprite* buttonbg = CCSprite::createWithSpriteFrameName("GJ_infoIcon_001.png");
     auto button = CCMenuItemSpriteExtra::create(buttonbg, layer, menu_selector(DemonClass::infobox));
+    if (internetFail) button = CCMenuItemSpriteExtra::create(buttonbg, layer, menu_selector(DemonClass::internetFail));
     auto menu = CCMenu::create();
     menu->setScale(0.5f);
     menu->addChild(button);
@@ -72,8 +74,12 @@ void infoButton(CCLayer* layer, CCLabelBMFont* thelabel) {
     layer->addChild(menu);
 }
 
-void DemonClass::infobox(CCObject*) {
+void DemonClass::infobox(CCObject* sender) {
     FLAlertLayer::create("N/A Position Help", "The <cr>Demon</c> or <cr>Challenge</c> has either never been <cl>List Worthy</c> or hasn't been placed yet on the <cy>List</c>.", "OK")->show();
+}
+
+void DemonClass::internetFail(CCObject* sender) {
+    FLAlertLayer::create("??? Position Help", "IngameListMod is unable to find the ranking of this level right now.\n\n<cy>This is usually not your fault, but double-check your Internet connection just to be safe.</c>\n\nPing me in the Geode SDK Discord server (<cb>@adyagd</c>) if you continue seeing this error.", "OK")->show();
 }
 
 void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool pointercrate, bool platformer)
@@ -104,7 +110,7 @@ void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool
         .fetch(url)
         .text()
         .then([self, thelabel, pointercrate, level, platformer](std::string const& resultat) mutable {
-            std::cout << resultat << "\n\n";
+            log::info("{}\n\n", resultat);
             std::string result;
 
             try {
@@ -113,7 +119,7 @@ void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool
 
                 self->autorelease();
 
-                if (childJson[0].contains("position")) {
+                if (childJson.size() > 0 && childJson[0].contains("position")) {
                     int position = childJson[0]["position"];
                     std::string label = std::string(std::to_string(position));
                     thelabel->setString(label.c_str());
@@ -129,6 +135,10 @@ void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool
                     infoButton(self, thelabel);
                     cachedPositions.insert({ level->m_levelID, -1 });
                 }
+            } catch (nlohmann::json::exception &e) { // refer to: https://github.com/nlohmann/json/discussions/2467#discussioncomment-127872
+                log::info("e.what(): {}", e.what()); // log for users to end to adya
+                thelabel->setString("???"); // distinguish from "N/A" rankings
+                infoButton(self, thelabel, true); // distinguish from "N/A" rankings
             } catch (int a) {}
         })
         .expect([](std::string const& error) {
