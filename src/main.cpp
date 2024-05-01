@@ -79,7 +79,7 @@ void DemonClass::infobox(CCObject* sender) {
 }
 
 void DemonClass::internetFail(CCObject* sender) {
-    FLAlertLayer::create("??? Position Help", "IngameListMod could not fetch this level's ranking right now.\n\nTry again later.", "OK")->show();
+    FLAlertLayer::create("??? Position Help", "IngameListMod is unable to find the ranking of this level right now.\n\n<cy>This is usually not your fault, but double-check your Internet connection just to be safe.</c>\n\nPing me in the Geode SDK Discord server (<cb>@adyagd</c>) if you continue seeing this error.", "OK")->show();
 }
 
 void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool pointercrate, bool platformer)
@@ -139,13 +139,6 @@ void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool
                 log::info("e.what(): {}", e.what()); // log for users to end to adya
                 thelabel->setString("???"); // distinguish from "N/A" rankings
                 infoButton(self, thelabel, true); // distinguish from "N/A" rankings
-                if (!Mod::get()->getSettingValue<bool>("silentFail")) {
-                    FLAlertLayer::create(
-                        "Oof!",
-                        "IngameListMod is unable to find the ranking of this level right now.\n\n<cy>This is usually not your fault, but double-check your Internet connection just to be safe.</c>\n\nPing me in the Geode SDK Discord server (<cb>@adyagd</c>) if you continue seeing this error.",
-                        "Close"
-                    )->show();
-                }
             } catch (int a) {}
         })
         .expect([](std::string const& error) {
