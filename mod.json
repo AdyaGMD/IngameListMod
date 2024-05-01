@@ -10,7 +10,7 @@
 	"settings": {
 		"silentFail": {
 			"name": "Suppress Errors",
-			"description": "When IngameListMod fails to get the ranking of a demon level, you'll get an alert. Enabling this setting disables the alert.\n\n<cy>Fetching level rankings will still fail even if you enable this.</c>",
+			"description": "When the mod fails to get the ranking of a demon level, you'll get an alert. Enabling this setting disables the alert.\n\n<cy>Fetching level rankings will still fail even if you enable this.</c>",
 			"type": "bool",
 			"default": false
 		}
