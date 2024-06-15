@@ -1,7 +1,9 @@
 {
-	"geode": "2.0.0-beta.25",
-	"version": "v1.1.6",
-	"gd": "2.204",
+	"geode": "3.0.0-beta.1",
+	"version": "v1.1.7",
+	"gd": {
+		"win": "2.206"
+	},
 	"id": "adyagd.ingamelistmod",
 	"name": "IngameListMod",
 	"developer": "AdyaGD",

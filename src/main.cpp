@@ -13,6 +13,8 @@ bool requestfinished = false;
 bool partitied = false;
 int listtype;
 
+EventListener<web::WebTask> webreq;
+
 class DemonClass {
 public:
     void infobox(CCObject* sender);
@@ -106,44 +108,43 @@ void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool
     std::string url = pointercrate ? "https://api.aredl.net/api/aredl/levels/" + std::string(lvlID) + "?two_player=false&records=false&creators=false&verification=false&packs=false" : "https://challengelist.gd/api/v2/demons/listed/?name=" + std::string(lvlname);
     if (platformer) url = "https://www.demonlist.com/api/level/?level_id=" + std::string(lvlID);
 
-    web::AsyncWebRequest()
-        .fetch(url)
-        .text()
-        .then([self, thelabel, pointercrate, level, platformer](std::string const& resultat) mutable {
-            log::info("{}\n\n", resultat);
-            std::string result;
+    webreq.bind([self, thelabel, pointercrate, level, platformer](web::WebTask::Event* e) mutable {
+            if (web::WebResponse* res = e->getValue()) {
+                std::string resultat = res->string().unwrap();
+                try {
+                    std::string result;
+                    log::info("{}\n\n", resultat);
+                    (!platformer && !pointercrate) ? result = resultat : result = "[" + resultat + "]";
+                    childJson = nlohmann::json::parse(result);
 
-            try {
-                (!platformer && !pointercrate) ? result = resultat : result = "[" + resultat + "]";
-                childJson = nlohmann::json::parse(result);
+                    self->autorelease();
 
-                self->autorelease();
-
-                if (childJson.size() > 0 && childJson[0].contains("position")) {
-                    int position = childJson[0]["position"];
-                    std::string label = std::string(std::to_string(position));
-                    thelabel->setString(label.c_str());
-                    CCDictionary* pos = CCDictionary::create();
-                    pos->setObject(CCInteger::create(position), "get");
-                    pos->setObject(CCBool::create(pointercrate), "domain");
-                    pos->setObject(CCBool::create(platformer), "platformer");
-                    createButton(self, thelabel, pos, pointercrate, platformer);
-                    cachedPositions.insert({ level->m_levelID, position });
-                }
-                else {
-                    thelabel->setString("N/A");
-                    infoButton(self, thelabel);
-                    cachedPositions.insert({ level->m_levelID, -1 });
-                }
-            } catch (nlohmann::json::exception &e) { // refer to: https://github.com/nlohmann/json/discussions/2467#discussioncomment-127872
-                log::info("e.what(): {}", e.what()); // log for users to end to adya
-                thelabel->setString("???"); // distinguish from "N/A" rankings
-                infoButton(self, thelabel, true); // distinguish from "N/A" rankings
-            } catch (int a) {}
-        })
-        .expect([](std::string const& error) {
-            return;
+                    if (childJson.size() > 0 && childJson[0].contains("position")) {
+                        int position = childJson[0]["position"];
+                        std::string label = std::string(std::to_string(position));
+                        thelabel->setString(label.c_str());
+                        CCDictionary* pos = CCDictionary::create();
+                        pos->setObject(CCInteger::create(position), "get");
+                        pos->setObject(CCBool::create(pointercrate), "domain");
+                        pos->setObject(CCBool::create(platformer), "platformer");
+                        createButton(self, thelabel, pos, pointercrate, platformer);
+                        cachedPositions.insert({ level->m_levelID, position });
+                    }
+                    else {
+                        thelabel->setString("N/A");
+                        infoButton(self, thelabel);
+                        cachedPositions.insert({ level->m_levelID, -1 });
+                    }
+                } catch (nlohmann::json::exception &e) { // refer to: https://github.com/nlohmann/json/discussions/2467#discussioncomment-127872
+                    log::info("e.what(): {}", e.what()); // log for users to send to adya
+                    thelabel->setString("???"); // distinguish from "N/A" rankings
+                    infoButton(self, thelabel, true); // distinguish from "N/A" rankings
+                } catch (int a) {}
+            }
         });
+
+    auto req = web::WebRequest();
+    webreq.setFilter(req.get(url));
 
     return;
 }
