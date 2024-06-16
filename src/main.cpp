@@ -60,7 +60,7 @@ void DemonClass::openLink(CCObject* ret) {
         std::string domain = "https://challengelist.gd/challenges/";
         if (listtype == 2) domain = "https://www.demonlist.com/platformer/rated/";
         std::string url = domain + std::string(std::to_string(position->getValue()));
-        ShellExecute(0, 0, url.c_str(), 0, 0, SW_SHOW);
+        web::openLinkInBrowser(url.c_str());
     }
 }
 
