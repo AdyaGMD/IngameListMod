@@ -58,7 +58,7 @@ void DemonClass::openLink(CCObject* ret) {
     CCBool* platformer = reinterpret_cast<CCBool*>(dict->objectForKey("platformer"));
     if (listtype > 0) {
         std::string domain = "https://challengelist.gd/challenges/";
-        if (listtype == 2) domain = "https://pemonlist.com/api/level/";
+        if (listtype == 2) domain = "https://pemonlist.com/level/";
         std::string url = domain + std::string(std::to_string(position->getValue()));
         ShellExecute(0, 0, url.c_str(), 0, 0, SW_SHOW);
     }
