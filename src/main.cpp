@@ -58,9 +58,9 @@ void DemonClass::openLink(CCObject* ret) {
     CCBool* platformer = reinterpret_cast<CCBool*>(dict->objectForKey("platformer"));
     if (listtype > 0) {
         std::string domain = "https://challengelist.gd/challenges/";
-        if (listtype == 2) domain = "https://www.demonlist.com/platformer/rated/";
+        if (listtype == 2) domain = "https://pemonlist.com/api/level/";
         std::string url = domain + std::string(std::to_string(position->getValue()));
-        web::openLinkInBrowser(url.c_str());
+        ShellExecute(0, 0, url.c_str(), 0, 0, SW_SHOW);
     }
 }
 
@@ -91,7 +91,7 @@ void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool
     self->retain();
 
     std::string lvlname = level->m_levelName;
-    std::string lvlID = std::to_string(level->m_levelID);
+    int lvlID = level->m_levelID;
     std::string oldStr = " ";
     std::string newStr = "%20";
 
@@ -105,10 +105,13 @@ void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool
         lvlname.replace(pos, oldStr.length(), newStr);
     }
 
-    std::string url = pointercrate ? "https://api.aredl.net/api/aredl/levels/" + std::string(lvlID) + "?two_player=false&records=false&creators=false&verification=false&packs=false" : "https://challengelist.gd/api/v2/demons/listed/?name=" + std::string(lvlname);
-    if (platformer) url = "https://www.demonlist.com/api/level/?level_id=" + std::string(lvlID);
+    std::string positionstring = "position";
 
-    webreq.bind([self, thelabel, pointercrate, level, platformer](web::WebTask::Event* e) mutable {
+    std::string url = pointercrate ? "https://api.aredl.net/api/aredl/levels/" + std::to_string(lvlID) + "?two_player=false&records=false&creators=false&verification=false&packs=false" : "https://challengelist.gd/api/v2/demons/listed/?name=" + std::string(lvlname);
+    if (platformer) url = "https://pemonlist.com/api/level/" + std::to_string(lvlID);
+    if (platformer) positionstring = "placement";
+
+    webreq.bind([self, thelabel, pointercrate, level, platformer, positionstring, lvlID](web::WebTask::Event* e) mutable {
             if (web::WebResponse* res = e->getValue()) {
                 std::string resultat = res->string().unwrap();
                 try {
@@ -119,12 +122,12 @@ void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool
 
                     self->autorelease();
 
-                    if (childJson.size() > 0 && childJson[0].contains("position")) {
-                        int position = childJson[0]["position"];
+                    if (childJson.size() > 0 && childJson[0].contains(positionstring)) {
+                        int position = childJson[0][positionstring];
                         std::string label = std::string(std::to_string(position));
                         thelabel->setString(label.c_str());
                         CCDictionary* pos = CCDictionary::create();
-                        pos->setObject(CCInteger::create(position), "get");
+                        pos->setObject(CCInteger::create(lvlID), "get");
                         pos->setObject(CCBool::create(pointercrate), "domain");
                         pos->setObject(CCBool::create(platformer), "platformer");
                         createButton(self, thelabel, pos, pointercrate, platformer);
@@ -140,6 +143,10 @@ void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool
                     thelabel->setString("???"); // distinguish from "N/A" rankings
                     infoButton(self, thelabel, true); // distinguish from "N/A" rankings
                 } catch (int a) {}
+            } else if (e->isCancelled()) {
+                //log::info("e.what(): {}", e.what()); // log for users to send to adya
+                thelabel->setString("???"); // distinguish from "N/A" rankings
+                infoButton(self, thelabel, true); // distinguish from "N/A" rankings
             }
         });
 
