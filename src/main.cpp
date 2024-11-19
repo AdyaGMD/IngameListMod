@@ -230,7 +230,6 @@ class $modify(LevelInfoLayer) {
         }
     }
     else {
-        log::info("retard");
         getRequest(this, level, thelabel, pointercrate, platformer);
     }
 
