@@ -4,7 +4,7 @@
 #include <Geode/modify/MenuLayer.hpp>
 #include <Geode/utils/web.hpp>
 #include <Geode/loader/Loader.hpp>
-#include "json.h"
+#include <matjson.hpp>
 
 using namespace geode::prelude;
 
@@ -86,7 +86,7 @@ void DemonClass::internetFail(CCObject* sender) {
 
 void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool pointercrate, bool platformer)
 {
-    static nlohmann::json childJson;
+    static matjson::Value childJson;
 
     self->retain();
 
@@ -112,43 +112,69 @@ void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool
     if (platformer) positionstring = "placement";
 
     webreq.bind([self, thelabel, pointercrate, level, platformer, positionstring, lvlID](web::WebTask::Event* e) mutable {
-            if (web::WebResponse* res = e->getValue()) {
-                std::string resultat = res->string().unwrap();
-                try {
-                    std::string result;
-                    log::info("{}\n\n", resultat);
-                    (!platformer && !pointercrate) ? result = resultat : result = "[" + resultat + "]";
-                    childJson = nlohmann::json::parse(result);
-
-                    self->autorelease();
-
-                    if (childJson.size() > 0 && childJson[0].contains(positionstring)) {
-                        int position = childJson[0][positionstring];
-                        std::string label = std::string(std::to_string(position));
-                        thelabel->setString(label.c_str());
-                        CCDictionary* pos = CCDictionary::create();
-                        pos->setObject(CCInteger::create(lvlID), "get");
-                        pos->setObject(CCBool::create(pointercrate), "domain");
-                        pos->setObject(CCBool::create(platformer), "platformer");
-                        createButton(self, thelabel, pos, pointercrate, platformer);
-                        cachedPositions.insert({ level->m_levelID, position });
-                    }
-                    else {
-                        thelabel->setString("N/A");
-                        infoButton(self, thelabel);
-                        cachedPositions.insert({ level->m_levelID, -1 });
-                    }
-                } catch (nlohmann::json::exception &e) { // refer to: https://github.com/nlohmann/json/discussions/2467#discussioncomment-127872
-                    log::info("e.what(): {}", e.what()); // log for users to send to adya
-                    thelabel->setString("???"); // distinguish from "N/A" rankings
-                    infoButton(self, thelabel, true); // distinguish from "N/A" rankings
-                } catch (int a) {}
-            } else if (e->isCancelled()) {
-                //log::info("e.what(): {}", e.what()); // log for users to send to adya
-                thelabel->setString("???"); // distinguish from "N/A" rankings
-                infoButton(self, thelabel, true); // distinguish from "N/A" rankings
+        if (web::WebResponse* res = e->getValue()) {
+            std::string resultat = res->string().unwrap();
+            log::info("{}\n\n", resultat);
+            std::string result;
+            if (!platformer && !pointercrate) {
+                result = resultat;
+            } else {
+                result = "[" + resultat + "]";
             }
-        });
+            // Parse the result using matjson
+            auto parseResult = matjson::parse(result);
+            if (!parseResult) {
+                log::info("Failed to parse JSON: {}", parseResult.unwrapErr());
+                thelabel->setString("???");
+                infoButton(self, thelabel, true);
+                return;
+            }
+            childJson = parseResult.unwrap();
+
+            self->autorelease();
+
+            matjson::Value child;
+
+            if (childJson.isArray() && childJson.size() > 0) {
+                child = childJson[0];
+            } else if (childJson.isObject()) {
+                child = childJson;
+            } else {
+                thelabel->setString("N/A");
+                infoButton(self, thelabel);
+                cachedPositions.insert({ level->m_levelID, -1 });
+                return;
+            }
+
+            if (child.isObject() && child.contains(positionstring)) {
+                auto positionValue = child[positionstring];
+                auto positionResult = positionValue.asInt();
+                if (!positionResult) {
+                    log::info("Expected position to be an int");
+                    thelabel->setString("???");
+                    infoButton(self, thelabel, true);
+                    return;
+                }
+                int position = positionResult.unwrap();
+                log::info("{}", position);
+                std::string label = std::to_string(position);
+                thelabel->setString(label.c_str());
+                CCDictionary* pos = CCDictionary::create();
+                pos->setObject(CCInteger::create(lvlID), "get");
+                pos->setObject(CCBool::create(pointercrate), "domain");
+                pos->setObject(CCBool::create(platformer), "platformer");
+                createButton(self, thelabel, pos, pointercrate, platformer);
+                cachedPositions.insert({ level->m_levelID, position });
+            } else {
+                thelabel->setString("N/A");
+                infoButton(self, thelabel);
+                cachedPositions.insert({ level->m_levelID, -1 });
+            }
+        } else if (e->isCancelled()) {
+            thelabel->setString("???");
+            infoButton(self, thelabel, true);
+        }
+    });
 
     auto req = web::WebRequest();
     webreq.setFilter(req.get(url));
@@ -204,6 +230,7 @@ class $modify(LevelInfoLayer) {
         }
     }
     else {
+        log::info("retard");
         getRequest(this, level, thelabel, pointercrate, platformer);
     }
 
