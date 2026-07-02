@@ -108,7 +108,7 @@ void getRequest(CCLayer* self, GJGameLevel* level, CCLabelBMFont* thelabel, bool
 
     std::string positionstring = "position";
 
-    std::string url = pointercrate ? "https://api.aredl.net/api/aredl/levels/" + std::to_string(lvlID) + "?two_player=false&records=false&creators=false&verification=false&packs=false" : "https://challengelist.gd/api/v2/demons/listed/?name=" + std::string(lvlname);
+    std::string url = pointercrate ? "https://api.aredl.net/v2/api/aredl/levels/" + std::to_string(lvlID) + "?two_player=false&records=false&creators=false&verification=false&packs=false" : "https://challengelist.gd/api/v2/demons/listed/?name=" + std::string(lvlname);
     if (platformer) url = "https://pemonlist.com/api/level/" + std::to_string(lvlID);
     if (platformer) positionstring = "placement";
     
